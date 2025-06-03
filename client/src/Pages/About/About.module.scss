@@ -1,0 +1,239 @@
+.wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: #f8f9fa;
+}
+
+.main {
+    flex: 1;
+    padding-top: 80px;
+    padding-bottom: 40px;
+}
+
+.banner {
+    background: linear-gradient(135deg, #0A2647 0%, #144272 100%);
+    color: white;
+    padding: 50px 20px;
+    text-align: center;
+    margin-bottom: 40px;
+    
+    h1 {
+        font-size: 36px;
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+    
+    p {
+        font-size: 18px;
+        max-width: 600px;
+        margin: 0 auto;
+        opacity: 0.9;
+    }
+}
+
+.about-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 50px;
+}
+
+.section-title {
+    margin-bottom: 30px;
+    
+    h2 {
+        font-size: 24px;
+        color: #0A2647;
+        position: relative;
+        padding-bottom: 15px;
+        
+        &:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: linear-gradient(135deg, #0A2647 0%, #144272 100%);
+        }
+    }
+}
+
+.company-info {
+    display: flex;
+    gap: 30px;
+    
+    @media (max-width: 768px) {
+        flex-direction: column;
+    }
+    
+    .info-image {
+        flex: 0 0 40%;
+        
+        img {
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        @media (max-width: 768px) {
+            flex: 0 0 auto;
+        }
+    }
+    
+    .info-content {
+        flex: 1;
+        
+        p {
+            margin-bottom: 20px;
+            line-height: 1.7;
+            color: #444;
+            font-size: 16px;
+        }
+    }
+}
+
+.values-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 25px;
+}
+
+.value-item {
+    background-color: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease;
+    
+    &:hover {
+        transform: translateY(-5px);
+    }
+    
+    .value-icon {
+        font-size: 24px;
+        color: #144272;
+        margin-bottom: 15px;
+    }
+    
+    h3 {
+        font-size: 18px;
+        margin-bottom: 10px;
+        color: #0A2647;
+    }
+    
+    p {
+        color: #555;
+        line-height: 1.6;
+    }
+}
+
+.team-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 25px;
+}
+
+.team-member {
+    background-color: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+    text-align: center;
+    transition: transform 0.3s ease;
+    
+    &:hover {
+        transform: translateY(-5px);
+    }
+    
+    .member-image {
+        height: 220px;
+        
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    }
+    
+    h3 {
+        margin: 15px 0 5px;
+        padding: 0 15px;
+        font-size: 18px;
+        color: #0A2647;
+    }
+    
+    p {
+        margin: 0 0 15px;
+        padding: 0 15px;
+        color: #666;
+        font-size: 14px;
+    }
+}
+
+.stores-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+}
+
+.store-item {
+    background-color: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+    
+    h3 {
+        font-size: 18px;
+        margin-bottom: 15px;
+        color: #0A2647;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    p {
+        margin-bottom: 8px;
+        color: #555;
+        padding-left: 26px;
+        
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+}
+
+.contact-info {
+    display: flex;
+    gap: 30px;
+    
+    @media (max-width: 768px) {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .contact-item {
+        flex: 1;
+        background-color: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        
+        svg {
+            font-size: 24px;
+            color: #144272;
+        }
+        
+        p {
+            margin: 0;
+            font-size: 16px;
+            color: #333;
+        }
+    }
+}
