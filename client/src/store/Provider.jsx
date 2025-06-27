@@ -9,6 +9,7 @@ import { requestAuth } from '../Config/request';
 export function Provider({ children }) {
     const [dataUser, setDataUser] = useState({});
     const [loading, setLoading] = useState(true);
+    const [cartCount, setCartCount] = useState(0);
 
     const fetchAuth = async () => {
         try {
@@ -30,6 +31,8 @@ export function Provider({ children }) {
         }
     };
 
+    const resetUser = () => setDataUser({});
+
     useEffect(() => {
         const token = cookies.get('logged');
 
@@ -45,7 +48,10 @@ export function Provider({ children }) {
             value={{
                 dataUser,
                 fetchAuth,
-                loading
+                resetUser,
+                loading,
+                cartCount,
+                setCartCount
             }}
         >
             {children}

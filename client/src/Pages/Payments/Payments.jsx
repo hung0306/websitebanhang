@@ -62,13 +62,29 @@ function Payments() {
                         <div className={cx('list__products')}>
                             <ul>
                                 {dataPayment?.dataProduct?.map((item) => (
-                                    <li key={item?.product?._id}>
+                                    <li key={item?.product?._id} style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                                         <div id={cx('product')}>
                                             <img src={item?.product.images[0]} alt="" />
                                             <h4>{item?.product?.name}</h4>
                                         </div>
-                                        <p id={cx('price')}>Số lượng : x{item?.quantity} </p>
-                                        <p id={cx('price')}>{item?.product?.price.toLocaleString()} đ</p>
+                                        <div style={{ marginLeft: 16 }}>
+                                            <span style={{ color: '#e94560', fontWeight: 600 }}>
+                                                Số lượng: x{item?.quantity}
+                                            </span>
+                                            <br />
+                                            {item?.product?.priceDiscount && item?.product?.priceDiscount > 0 ? (
+                                                <>
+                                                    <span style={{ color: '#e94560', fontWeight: 600 }}>
+                                                        {(item?.product?.priceDiscount * item?.quantity).toLocaleString()} đ
+                                                    </span>
+                                                    <span style={{ textDecoration: 'line-through', color: '#888', marginLeft: 8 }}>
+                                                        {(item?.product?.price * item?.quantity).toLocaleString()} đ
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                <span>{(item?.product?.price * item?.quantity).toLocaleString()} đ</span>
+                                            )}
+                                        </div>
                                     </li>
                                 ))}
                             </ul>

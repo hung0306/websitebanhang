@@ -3,7 +3,7 @@ import styles from './Cart.module.scss';
 import Header from '../../Components/Header/Header';
 import Footer from '../../Components/Footer/Footer';
 
-import { Button, Table, Form, Input, InputNumber, Spin, Empty, message, Divider, Steps, Card } from 'antd';
+import { Button, Table, Form, Input, InputNumber, Spin, Empty, message, Divider, Steps, Card, Checkbox } from 'antd';
 import { useEffect, useState } from 'react';
 import { requestDeleteCart, requestGetCart, requestPayment, requestUpdateInfoUserCart, requestUpdateCart } from '../../Config/request';
 import { useNavigate, Link } from 'react-router-dom';
@@ -21,6 +21,7 @@ import {
     PhoneOutlined,
     EnvironmentOutlined
 } from '@ant-design/icons';
+import { useStore } from '../../hooks/useStore';
 
 const cx = classNames.bind(styles);
 
@@ -33,6 +34,8 @@ function Cart() {
     const [invalidInputs, setInvalidInputs] = useState({});
     const [selectedPayment, setSelectedPayment] = useState('COD');
     const navigate = useNavigate();
+    const { dataUser } = useStore();
+    const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
     const fetchCart = async () => {
         try {
@@ -52,7 +55,6 @@ function Cart() {
             }
         } catch (error) {
             console.error('Error fetching cart:', error);
-            message.error('Không thể tải giỏ hàng. Vui lòng thử lại sau.');
             setCart([]);
             setTotalPrice(0);
         } finally {
@@ -63,6 +65,17 @@ function Cart() {
     useEffect(() => {
         fetchCart();
     }, []);
+
+    // Tự động điền thông tin user vào form thanh toán
+    useEffect(() => {
+        if (dataUser && dataUser.fullName) {
+            form.setFieldsValue({
+                fullName: dataUser.fullName || '',
+                phone: dataUser.phone || '',
+                address: dataUser.address || '',
+            });
+        }
+    }, [dataUser, form]);
 
     // Calculate total price based on current cart items
     const recalculateTotal = (cartItems) => {
@@ -97,11 +110,11 @@ function Cart() {
     // Recalculate total whenever cart changes
     useEffect(() => {
         if (cart && cart.length > 0) {
-            const calculatedTotal = recalculateTotal(cart);
-            console.log('Setting total price to:', calculatedTotal);
+            const filtered = cart.filter(item => selectedRowKeys.includes(item._id));
+            const calculatedTotal = recalculateTotal(filtered.length > 0 ? filtered : cart);
             setTotalPrice(calculatedTotal);
         }
-    }, [cart]);
+    }, [cart, selectedRowKeys]);
 
     const handleUpdateQuantity = async (productId, newQuantity, oldQuantity) => {
         // Handle empty, null or undefined values
@@ -212,7 +225,7 @@ function Cart() {
             };
 
             await requestUpdateInfoUserCart(data);
-            message.success('Cập nhật thông tin thành công');
+            message.success('Đặt hàng thành công');
         } catch (error) {
             console.error('Error updating user info:', error);
             message.error('Cập nhật thông tin thất bại');
@@ -226,19 +239,31 @@ function Cart() {
             const values = await form.validateFields();
             setSubmitting(true);
 
+            // Lọc sản phẩm đã chọn để đặt hàng
+            const productsToOrder = selectedRowKeys.length > 0
+                ? cart.filter(item => selectedRowKeys.includes(item._id))
+                : cart;
+            if (productsToOrder.length === 0) {
+                message.warning('Vui lòng chọn sản phẩm để đặt hàng!');
+                setSubmitting(false);
+                return;
+            }
+
+            // Gửi thông tin user và danh sách sản phẩm đặt hàng lên server
+            // (Nếu backend chưa hỗ trợ, chỉ gửi thông tin user như cũ)
             await handleSubmit(values);
 
             switch (typePayment) {
                 case 'COD':
-                    const codRes = await requestPayment(typePayment);
+                    const codRes = await requestPayment(typePayment, productsToOrder);
                     navigate(`/payment/${codRes.metadata}`);
                     break;
                 case 'MOMO':
-                    const momoRes = await requestPayment(typePayment);
+                    const momoRes = await requestPayment(typePayment, productsToOrder);
                     window.open(momoRes.metadata.payUrl, '_blank');
                     break;
                 case 'VNPAY':
-                    const vnpayRes = await requestPayment(typePayment);
+                    const vnpayRes = await requestPayment(typePayment, productsToOrder);
                     window.open(vnpayRes.metadata, '_blank');
                     break;
                 default:
@@ -382,6 +407,13 @@ function Cart() {
         stock: item.stock || 99,
     }));
 
+    const rowSelection = {
+        selectedRowKeys,
+        onChange: (newSelectedRowKeys) => {
+            setSelectedRowKeys(newSelectedRowKeys);
+        },
+    };
+
     return (
         <div className={cx('wrapper')}>
             <header>
@@ -456,6 +488,7 @@ function Cart() {
                             ) : cart.length > 0 ? (
                                 <div className={cx('cart-table-container')}>
                                     <Table 
+                                        rowSelection={rowSelection}
                                         dataSource={dataSource} 
                                         columns={columns} 
                                         pagination={false}
@@ -504,7 +537,7 @@ function Cart() {
                                     <div className={cx('summary-total')}>
                                         <span>Tổng tiền:</span>
                                         <span>{totalPrice.toLocaleString()}₫</span>
-                    </div>
+                                    </div>
 
                                     <div className={cx('coupon-section')}>
                                         <h4>Mã giảm giá</h4>

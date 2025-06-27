@@ -33,12 +33,22 @@ function LoginUser() {
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [errors, setErrors] = useState({});
+    const [loading, setLoading] = useState(false);
+
+    const validate = () => {
+        const newErrors = {};
+        if (!email.trim()) newErrors.email = 'Vui lòng nhập email';
+        else if (!/^\S+@\S+\.\S+$/.test(email)) newErrors.email = 'Email không hợp lệ';
+        if (!password) newErrors.password = 'Vui lòng nhập mật khẩu';
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
 
     const handleLogin = async () => {
-        const data = {
-            email,
-            password,
-        };
+        if (!validate()) return;
+        setLoading(true);
+        const data = { email, password };
         try {
             const res = await requestLogin(data);
             message.success(res.metadata.message);
@@ -47,7 +57,9 @@ function LoginUser() {
             }, 1000);
             navigate('/');
         } catch (error) {
-            message.error(error.response.data.message);
+            message.error(error.response?.data?.message || 'Đăng nhập thất bại');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -61,11 +73,13 @@ function LoginUser() {
                 <div className={cx('container')}>
                     <h1>Đăng nhập</h1>
                     <div className={cx('form')}>
-                        <Input placeholder="Email" onChange={(e) => setEmail(e.target.value)} />
+                        <Input placeholder="Email" onChange={(e) => setEmail(e.target.value)} status={errors.email ? 'error' : ''} />
+                        {errors.email && <div style={{ color: 'red', fontSize: 13 }}>{errors.email}</div>}
                         <Space direction="vertical">
-                            <Input.Password placeholder="Mật khẩu" onChange={(e) => setPassword(e.target.value)} />
+                            <Input.Password placeholder="Mật khẩu" onChange={(e) => setPassword(e.target.value)} status={errors.password ? 'error' : ''} />
                         </Space>
-                        <Button fullWidth onClick={handleLogin}>
+                        {errors.password && <div style={{ color: 'red', fontSize: 13 }}>{errors.password}</div>}
+                        <Button type="primary" fullWidth onClick={handleLogin} loading={loading} block style={{ fontWeight: 500, fontSize: 16 }}>
                             Đăng nhập
                         </Button>
 

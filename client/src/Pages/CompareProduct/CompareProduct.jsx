@@ -232,128 +232,27 @@ function CompareProduct() {
                     
                     {activeTab === 'overview' && (
                         <div className={cx('tab-content')}>
-                            <div className={cx('specs-comparison')}>
+                            <div className={cx('specs-comparison', 'full')} style={{ minWidth: 600 }}>
                                 <h3>Thông số nổi bật</h3>
-                                
-                                <div className={cx('spec-row')}>
-                                    <div className={cx('spec-label')}>Màn hình</div>
-                                    <div className={cx('spec-value', { 
-                                        better: determineBetter(product1?.screen, product2?.screen, 'screen') === 'product1'
-                                    })}>
-                                        {product1?.screen || 'Không có thông tin'}
-                                    </div>
-                                    <div className={cx('spec-value', { 
-                                        better: determineBetter(product1?.screen, product2?.screen, 'screen') === 'product2'
-                                    })}>
-                                        {product2?.screen || 'Không có thông tin'}
-                                    </div>
+                                <div className={cx('spec-row', 'header')}>
+                                    <div className={cx('spec-label')}>Thông số</div>
+                                    <div className={cx('spec-value')}>{product1?.name}</div>
+                                    <div className={cx('spec-value')}>{product2?.name}</div>
                                 </div>
-
-                                <div className={cx('spec-row')}>
-                                    <div className={cx('spec-label')}>CPU</div>
-                                    <div className={cx('spec-value')}>
-                                        {product1?.cpu || 'Không có thông tin'}
+                                {Array.from(new Set([
+                                    ...Object.keys(product1?.specifications || {}),
+                                    ...Object.keys(product2?.specifications || {})
+                                ])).map((key) => (
+                                    <div className={cx('spec-row')} key={key}>
+                                        <div className={cx('spec-label')}>{key}</div>
+                                        <div className={cx('spec-value')}>
+                                            {product1?.specifications?.[key] || '-'}
+                                        </div>
+                                        <div className={cx('spec-value')}>
+                                            {product2?.specifications?.[key] || '-'}
+                                        </div>
                                     </div>
-                                    <div className={cx('spec-value')}>
-                                        {product2?.cpu || 'Không có thông tin'}
-                                    </div>
-                                </div>
-
-                                <div className={cx('spec-row')}>
-                                    <div className={cx('spec-label')}>RAM</div>
-                                    <div className={cx('spec-value', { 
-                                        better: determineBetter(product1?.ram, product2?.ram, 'ram') === 'product1'
-                                    })}>
-                                        {product1?.ram || 'Không có thông tin'}
-                                    </div>
-                                    <div className={cx('spec-value', { 
-                                        better: determineBetter(product1?.ram, product2?.ram, 'ram') === 'product2'
-                                    })}>
-                                        {product2?.ram || 'Không có thông tin'}
-                                    </div>
-                                </div>
-
-                                <div className={cx('spec-row')}>
-                                    <div className={cx('spec-label')}>Bộ nhớ</div>
-                                    <div className={cx('spec-value', { 
-                                        better: determineBetter(product1?.storage, product2?.storage, 'storage') === 'product1'
-                                    })}>
-                                        {product1?.storage || 'Không có thông tin'}
-                                    </div>
-                                    <div className={cx('spec-value', { 
-                                        better: determineBetter(product1?.storage, product2?.storage, 'storage') === 'product2'
-                                    })}>
-                                        {product2?.storage || 'Không có thông tin'}
-                                    </div>
-                                </div>
-                                
-                                <div className={cx('spec-row')}>
-                                    <div className={cx('spec-label')}>Camera</div>
-                                    <div className={cx('spec-value')}>
-                                        {product1?.camera || 'Không có thông tin'}
-                                    </div>
-                                    <div className={cx('spec-value')}>
-                                        {product2?.camera || 'Không có thông tin'}
-                                    </div>
-                                </div>
-                                
-                                <div className={cx('spec-row')}>
-                                    <div className={cx('spec-label')}>Pin</div>
-                                    <div className={cx('spec-value')}>
-                                        {product1?.battery || 'Không có thông tin'}
-                                    </div>
-                                    <div className={cx('spec-value')}>
-                                        {product2?.battery || 'Không có thông tin'}
-                                    </div>
-                                </div>
-                                
-                                <div className={cx('spec-row')}>
-                                    <div className={cx('spec-label')}>Giá</div>
-                                    <div className={cx('spec-value', { 
-                                        better: determineBetter(product1?.price, product2?.price, 'price') === 'product1'
-                                    })}>
-                                        {product1?.price?.toLocaleString()} đ
-                                    </div>
-                                    <div className={cx('spec-value', { 
-                                        better: determineBetter(product1?.price, product2?.price, 'price') === 'product2'
-                                    })}>
-                                        {product2?.price?.toLocaleString()} đ
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div className={cx('product-advantages')}>
-                                <div className={cx('advantage-column')}>
-                                    <h3>Điểm mạnh của {product1?.name}</h3>
-                                    <ul>
-                                        {determineBetter(product1?.price, product2?.price, 'price') === 'product1' && (
-                                            <li><FontAwesomeIcon icon={faCheckCircle} /> Giá thành hợp lý hơn</li>
-                                        )}
-                                        {determineBetter(product1?.storage, product2?.storage, 'storage') === 'product1' && (
-                                            <li><FontAwesomeIcon icon={faCheckCircle} /> Bộ nhớ lớn hơn</li>
-                                        )}
-                                        {determineBetter(product1?.ram, product2?.ram, 'ram') === 'product1' && (
-                                            <li><FontAwesomeIcon icon={faCheckCircle} /> RAM lớn hơn</li>
-                                        )}
-                                        <li><FontAwesomeIcon icon={faCheckCircle} /> {product1?.name}</li>
-                                    </ul>
-                                </div>
-                                
-                                <div className={cx('advantage-column')}>
-                                    <h3>Điểm mạnh của {product2?.name}</h3>
-                                    <ul>
-                                        {determineBetter(product1?.price, product2?.price, 'price') === 'product2' && (
-                                            <li><FontAwesomeIcon icon={faCheckCircle} /> Giá thành hợp lý hơn</li>
-                                        )}
-                                        {determineBetter(product1?.storage, product2?.storage, 'storage') === 'product2' && (
-                                            <li><FontAwesomeIcon icon={faCheckCircle} /> Bộ nhớ lớn hơn</li>
-                                        )}
-                                        {determineBetter(product1?.ram, product2?.ram, 'ram') === 'product2' && (
-                                            <li><FontAwesomeIcon icon={faCheckCircle} /> RAM lớn hơn</li>
-                                        )}
-                                        <li><FontAwesomeIcon icon={faCheckCircle} /> {product2?.name}</li>
-                                    </ul>
-                                </div>
+                                ))}
                             </div>
                         </div>
                     )}

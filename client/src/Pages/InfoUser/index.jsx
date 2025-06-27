@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 const cx = classNames.bind(styles);
 
 function Index() {
-    const { dataUser } = useStore();
+    const { dataUser, resetUser } = useStore();
 
     const [isOpen, setIsOpen] = useState(false);
 
@@ -20,9 +20,7 @@ function Index() {
     const handleLogOut = async () => {
         try {
             await requestLogout();
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+            resetUser();
             navigate('/');
         } catch (error) {
             message.error(error.response.data.message);

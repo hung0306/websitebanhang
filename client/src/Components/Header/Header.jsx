@@ -7,24 +7,38 @@ import logo from '../../assets/images/logo.png';
 
 import { useStore } from '../../hooks/useStore';
 
-import { Avatar, Dropdown, Menu, Space } from 'antd';
+import { Avatar, Dropdown, Menu, Space, Badge } from 'antd';
 import { UserOutlined, LogoutOutlined, ShoppingCartOutlined, AppstoreOutlined, GiftOutlined, QuestionCircleOutlined, TeamOutlined } from '@ant-design/icons';
-import { requestLogout } from '../../Config/request';
+import { requestLogout, requestGetCart } from '../../Config/request';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const cx = classNames.bind(styles);
 
 function Header() {
-    const { dataUser } = useStore();
+    const { dataUser, resetUser, cartCount, setCartCount } = useStore();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const fetchCartCount = async () => {
+            try {
+                const res = await requestGetCart();
+                if (res && res.metadata && res.metadata.newData && Array.isArray(res.metadata.newData.data)) {
+                    setCartCount(res.metadata.newData.data.length);
+                } else {
+                    setCartCount(0);
+                }
+            } catch (error) {
+                setCartCount(0);
+            }
+        };
+        if (dataUser._id) fetchCartCount();
+    }, [dataUser._id, setCartCount]);
 
     const handleLogout = async () => {
         try {
             await requestLogout();
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+            resetUser();
             navigate('/');
         } catch (error) {
             return;
@@ -72,8 +86,17 @@ function Header() {
                                             Hồ sơ
                                         </Menu.Item>
                                     </Link>
+                                    <Link to={`/info-user/${dataUser._id}?tab=orders`}>
+                                        <Menu.Item key="orders" icon={<AppstoreOutlined />}>
+                                            Lịch sử đơn hàng
+                                        </Menu.Item>
+                                    </Link>
                                     <Link to={`/cart`}>
-                                        <Menu.Item key="cart" icon={<ShoppingCartOutlined />}>
+                                        <Menu.Item key="cart" icon={
+                                            <Badge count={cartCount} size="small" offset={[2, -2]}>
+                                                <ShoppingCartOutlined />
+                                            </Badge>
+                                        }>
                                             Giỏ hàng
                                         </Menu.Item>
                                     </Link>

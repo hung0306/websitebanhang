@@ -5,114 +5,166 @@ import { Button, Input, message, Card, Tabs, Tag, Typography, Avatar, Badge } fr
 import { Table } from 'antd';
 import { useStore } from '../../../../hooks/useStore';
 import { useEffect, useState } from 'react';
-import { requestGetHistoryOrder, requestUpdateInfoUser } from '../../../../Config/request';
+import { requestGetHistoryOrder, requestUpdateInfoUser, requestUpdateStatusOrder } from '../../../../Config/request';
 import ModalUpdatePassword from './ModalUpdatePassword/ModalUpdatePassword';
 import { UserOutlined, MailOutlined, PhoneOutlined, HomeOutlined, LockOutlined, ShoppingOutlined } from '@ant-design/icons';
+import { useLocation } from 'react-router-dom';
+import { Tabs as AntdTabs } from 'antd';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 const cx = classNames.bind(styles);
 
-const columns = [
-    {
-        title: 'ID',
-        dataIndex: 'orderId',
-        key: 'orderId',
-        width: '15%',
-        ellipsis: true,
-    },
-    {
-        title: 'Tên sản phẩm',
-        dataIndex: 'products',
-        key: 'products',
-        render: (products) => products[0].name,
-    },
-    {
-        title: 'Giá',
-        dataIndex: 'products',
-        key: 'price',
-        render: (products) => products[0]?.price?.toLocaleString('vi-VN') + ' đ',
-    },
-    {
-        title: 'Số lượng',
-        dataIndex: 'products',
-        key: 'quantity',
-        render: (products) => products[0]?.quantity,
-    },
-    {
-        title: 'Địa chỉ',
-        dataIndex: 'address',
-        key: 'address',
-    },
-    {
-        title: 'Trạng thái',
-        dataIndex: 'statusOrder',
-        key: 'statusOrder',
-        render: (status) => {
-            let color = '';
-            let text = '';
-
-            switch (status) {
-                case 'pending':
-                    color = '#faad14'; // màu vàng
-                    text = 'Đang xử lý';
-                    break;
-                case 'completed':
-                    color = '#1677ff'; // màu xanh dương
-                    text = 'Đã xác nhận';
-                    break;
-                case 'shipping':
-                    color = '#722ed1'; // màu tím
-                    text = 'Đang vận chuyển';
-                    break;
-                case 'delivered':
-                    color = '#52c41a'; // màu xanh lá
-                    text = 'Đã giao hàng';
-                    break;
-                case 'cancelled':
-                    color = '#ff4d4f'; // màu đỏ
-                    text = 'Đã hủy';
-                    break;
-                default:
-                    color = '#000000';
-                    text = status;
-            }
-
-            return (
-                <Tag
-                    color={color}
-                    style={{
-                        borderRadius: '20px',
-                        padding: '4px 12px',
-                        fontWeight: 500
-                    }}
-                >
-                    {text}
-                </Tag>
-            );
+function getColumns(cancellingId, setCancellingId, setDataOrder) {
+    return [
+        {
+            title: 'ID',
+            dataIndex: 'orderId',
+            key: 'orderId',
+            width: '15%',
+            ellipsis: true,
         },
-    },
-    {
-        title: 'Phương thức',
-        dataIndex: 'typePayments',
-        key: 'typePayments',
-    },
-    {
-        title: 'Ngày đặt',
-        dataIndex: 'createdAt',
-        key: 'createdAt',
-        render: (date) => new Date(date).toLocaleDateString('vi-VN'),
-    },
-];
+        {
+            title: 'Tên sản phẩm',
+            dataIndex: 'products',
+            key: 'products',
+            render: (products) => products[0].name,
+        },
+        {
+            title: 'Giá',
+            dataIndex: 'products',
+            key: 'price',
+            render: (products) => {
+                const p = products[0];
+                if (p.priceDiscount && p.priceDiscount > 0) {
+                    return p.priceDiscount.toLocaleString('vi-VN') + ' đ';
+                }
+                return p.price?.toLocaleString('vi-VN') + ' đ';
+            },
+        },
+        {
+            title: 'Số lượng',
+            dataIndex: 'products',
+            key: 'quantity',
+            render: (products) => products[0]?.quantity,
+        },
+        {
+            title: 'Thành tiền',
+            dataIndex: 'products',
+            key: 'total',
+            render: (products) => {
+                const p = products[0];
+                const price = p.priceDiscount && p.priceDiscount > 0 ? p.priceDiscount : p.price;
+                const total = price * p.quantity;
+                return total?.toLocaleString('vi-VN') + ' đ';
+            },
+        },
+        {
+            title: 'Địa chỉ',
+            dataIndex: 'address',
+            key: 'address',
+        },
+        {
+            title: 'Trạng thái',
+            dataIndex: 'statusOrder',
+            key: 'statusOrder',
+            render: (status) => {
+                let color = '';
+                let text = '';
+
+                switch (status) {
+                    case 'pending':
+                        color = '#faad14'; // màu vàng
+                        text = 'Đang xử lý';
+                        break;
+                    case 'completed':
+                        color = '#1677ff'; // màu xanh dương
+                        text = 'Đã xác nhận';
+                        break;
+                    case 'shipping':
+                        color = '#722ed1'; // màu tím
+                        text = 'Đang vận chuyển';
+                        break;
+                    case 'delivered':
+                        color = '#52c41a'; // màu xanh lá
+                        text = 'Đã giao hàng';
+                        break;
+                    case 'cancelled':
+                        color = '#ff4d4f'; // màu đỏ
+                        text = 'Đã hủy';
+                        break;
+                    default:
+                        color = '#000000';
+                        text = status;
+                }
+
+                return (
+                    <Tag
+                        color={color}
+                        style={{
+                            borderRadius: '20px',
+                            padding: '4px 12px',
+                            fontWeight: 500
+                        }}
+                    >
+                        {text}
+                    </Tag>
+                );
+            },
+        },
+        {
+            title: 'Phương thức',
+            dataIndex: 'typePayments',
+            key: 'typePayments',
+        },
+        {
+            title: 'Ngày đặt',
+            dataIndex: 'createdAt',
+            key: 'createdAt',
+            render: (date) => new Date(date).toLocaleDateString('vi-VN'),
+        },
+        {
+            title: 'Thao tác',
+            key: 'action',
+            render: (_, record) => {
+                if (record.statusOrder === 'pending') {
+                    return (
+                        <Button danger size="small" disabled={cancellingId === record.orderId} onClick={async () => {
+                            setCancellingId(record.orderId);
+                            try {
+                                await requestUpdateStatusOrder({ statusOrder: 'cancelled', orderId: record.orderId });
+                                message.success('Huỷ đơn hàng thành công');
+                                // Reload orders
+                                const res = await requestGetHistoryOrder();
+                                setDataOrder(res.metadata.orders);
+                            } catch (error) {
+                                message.error(error?.response?.data?.message || 'Huỷ đơn hàng thất bại');
+                            } finally {
+                                setCancellingId(null);
+                            }
+                        }}>
+                            Huỷ đơn hàng
+                        </Button>
+                    );
+                }
+                return null;
+            },
+        },
+    ];
+}
 
 function InfoUser({ isOpen, setIsOpen }) {
     const { dataUser } = useStore();
+    const location = useLocation();
 
     const [fullName, setFullName] = useState(dataUser.fullName);
     const [email, setEmail] = useState(dataUser.email);
     const [phone, setPhone] = useState(dataUser.phone);
     const [address, setAddress] = useState(dataUser.address || 'Chưa cập nhật');
     const [activeTab, setActiveTab] = useState('1');
+    const [addressError, setAddressError] = useState('');
+    const [cancellingId, setCancellingId] = useState(null);
+    const [tabOrderStatus, setTabOrderStatus] = useState('pending');
 
     useEffect(() => {
         setFullName(dataUser.fullName);
@@ -121,7 +173,20 @@ function InfoUser({ isOpen, setIsOpen }) {
         setAddress(dataUser.address || 'Chưa cập nhật');
     }, [dataUser]);
 
+    useEffect(() => {
+        // Nếu có query ?tab=orders thì chuyển sang tab 2
+        const params = new URLSearchParams(location.search);
+        if (params.get('tab') === 'orders') {
+            setActiveTab('2');
+        }
+    }, [location.search]);
+
     const handleUpdateInfoUser = async () => {
+        if (!address || address.trim() === '' || address === 'Chưa cập nhật') {
+            setAddressError('Vui lòng nhập địa chỉ!');
+            return;
+        }
+        setAddressError('');
         try {
             const data = {
                 fullName,
@@ -129,11 +194,15 @@ function InfoUser({ isOpen, setIsOpen }) {
                 phone,
                 address,
             };
-            await requestUpdateInfoUser(data);
-            message.success('Cập nhật thông tin người dùng thành công');
-            window.location.reload();
+            const res = await requestUpdateInfoUser(data);
+            if (res && res.message && res.message.includes('thành công')) {
+                message.success('Cập nhật thông tin người dùng thành công');
+                window.location.reload();
+            } else {
+                message.error(res.message || 'Cập nhật thông tin người dùng thất bại');
+            }
         } catch (error) {
-            message.error('Cập nhật thông tin người dùng thất bại');
+            message.error(error.response?.data?.message || 'Cập nhật thông tin người dùng thất bại');
         }
     };
 
@@ -149,6 +218,14 @@ function InfoUser({ isOpen, setIsOpen }) {
 
     const handleChangePassword = () => {
         setIsOpen(true);
+    };
+
+    // Tạo các mảng đơn hàng theo trạng thái
+    const ordersByStatus = {
+        pending: dataOrder.filter(o => o.statusOrder === 'pending'),
+        shipping: dataOrder.filter(o => o.statusOrder === 'shipping'),
+        delivered: dataOrder.filter(o => o.statusOrder === 'delivered'),
+        cancelled: dataOrder.filter(o => o.statusOrder === 'cancelled'),
     };
 
     return (
@@ -196,13 +273,18 @@ function InfoUser({ isOpen, setIsOpen }) {
                                 onChange={(e) => setPhone(e.target.value)}
                                 prefix={<PhoneOutlined />}
                             />
-                            <Input
+                            <Input.TextArea
                                 size="large"
-                                placeholder="Địa chỉ"
-                                value={address}
+                                placeholder="Nhập địa chỉ cụ thể (ví dụ: Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố)"
+                                value={address === 'Chưa cập nhật' ? '' : address}
                                 onChange={(e) => setAddress(e.target.value)}
                                 prefix={<HomeOutlined />}
+                                autoSize={{ minRows: 2, maxRows: 4 }}
+                                status={addressError ? 'error' : ''}
+                                style={{ resize: 'none' }}
+                                onFocus={() => setAddressError('')}
                             />
+                            {addressError && <div style={{ color: 'red', fontSize: 13 }}>{addressError}</div>}
                         </div>
                         <div style={{ display: 'flex', gap: '16px' }}>
                             <Button onClick={handleUpdateInfoUser} className={cx('btn')} type="primary" size="large">
@@ -235,18 +317,32 @@ function InfoUser({ isOpen, setIsOpen }) {
                 >
                     <div className={cx('section')}>
                         <Title level={5}>Đơn hàng của bạn</Title>
-                        <div className={cx('table')}>
-                            <Table 
-                                dataSource={dataOrder} 
-                                columns={columns} 
-                                rowKey="orderId" 
-                                pagination={{
-                                    pageSize: 5,
-                                    showSizeChanger: true,
-                                    showTotal: (total) => `Tổng số ${total} đơn hàng`
-                                }}
-                            />
-                        </div>
+                        <AntdTabs
+                            activeKey={tabOrderStatus}
+                            onChange={setTabOrderStatus}
+                            items={[
+                                {
+                                    key: 'pending',
+                                    label: 'Đang xử lý',
+                                    children: <Table dataSource={ordersByStatus.pending} columns={getColumns(cancellingId, setCancellingId, setDataOrder)} rowKey="orderId" pagination={{ pageSize: 5, showSizeChanger: true, showTotal: (total) => `Tổng số ${total} đơn hàng` }} />
+                                },
+                                {
+                                    key: 'shipping',
+                                    label: 'Đang giao',
+                                    children: <Table dataSource={ordersByStatus.shipping} columns={getColumns(cancellingId, setCancellingId, setDataOrder)} rowKey="orderId" pagination={{ pageSize: 5, showSizeChanger: true, showTotal: (total) => `Tổng số ${total} đơn hàng` }} />
+                                },
+                                {
+                                    key: 'delivered',
+                                    label: 'Đã giao',
+                                    children: <Table dataSource={ordersByStatus.delivered} columns={getColumns(cancellingId, setCancellingId, setDataOrder)} rowKey="orderId" pagination={{ pageSize: 5, showSizeChanger: true, showTotal: (total) => `Tổng số ${total} đơn hàng` }} />
+                                },
+                                {
+                                    key: 'cancelled',
+                                    label: 'Đã huỷ',
+                                    children: <Table dataSource={ordersByStatus.cancelled} columns={getColumns(cancellingId, setCancellingId, setDataOrder)} rowKey="orderId" pagination={{ pageSize: 5, showSizeChanger: true, showTotal: (total) => `Tổng số ${total} đơn hàng` }} />
+                                },
+                            ]}
+                        />
                     </div>
                 </TabPane>
             </Tabs>

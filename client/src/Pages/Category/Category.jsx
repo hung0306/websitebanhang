@@ -8,6 +8,7 @@ import CardBody from '../../Components/CardBody/CardBody';
 import { useEffect, useRef, useState } from 'react';
 import { requestFilterProduct } from '../../Config/request';
 import { useNavigate } from 'react-router-dom';
+import { useCategory } from '../../context/CategoryContext';
 
 const cx = classNames.bind(styles);
 
@@ -37,6 +38,7 @@ function Category() {
     };
 
     const navigate = useNavigate();
+    const { selectedCategory } = useCategory();
 
     const handleCompare = (item) => {
         if (!productCompare.includes(item)) {
@@ -65,7 +67,7 @@ function Category() {
     useEffect(() => {
         const fetchData = async () => {
             const res = await requestFilterProduct();
-            setDataProduct(res.metadata);
+            setDataProduct(res.metadata.filter(p => p.isActive !== false));
         };
         fetchData();
     }, []);
@@ -97,7 +99,11 @@ function Category() {
                                 ]}
                             />
 
-                            <button onClick={() => setCheckSelectCompare(!checkSelectCompare)}>
+                            <button 
+                                onClick={() => setCheckSelectCompare(!checkSelectCompare)}
+                                disabled={!selectedCategory}
+                                style={{ opacity: !selectedCategory ? 0.5 : 1, cursor: !selectedCategory ? 'not-allowed' : 'pointer' }}
+                            >
                                 {checkSelectCompare ? 'Bỏ so sánh' : 'So sánh'}
                             </button>
                         </div>
@@ -106,6 +112,7 @@ function Category() {
                     <div>
                         {dataProduct.map((item) => (
                             <CardBody
+                                key={item._id}
                                 item={item}
                                 checkSelectCompare={checkSelectCompare}
                                 handleCompare={handleCompare}

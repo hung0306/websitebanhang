@@ -41,7 +41,8 @@ function ProductsHome() {
             
             const res = await requestFilterProduct(params);
             if (res && res.metadata) {
-                setProducts(res.metadata);
+                let data = res.metadata.products ? res.metadata.products : res.metadata;
+                setProducts(data.filter(p => p.isActive !== false));
             }
         } catch (error) {
             console.error('Error filtering products:', error);
@@ -60,7 +61,8 @@ function ProductsHome() {
             
             const res = await requestFilterProduct(params);
             if (res && res.metadata) {
-                setProducts(res.metadata);
+                let data = res.metadata.products ? res.metadata.products : res.metadata;
+                setProducts(data.filter(p => p.isActive !== false));
             }
         } catch (error) {
             console.error('Error sorting products:', error);
@@ -122,7 +124,8 @@ function ProductsHome() {
                     const response = await requestGetProductsByCategory(identifier);
                     
                     if (response && response.metadata && response.metadata.products) {
-                        setProducts(response.metadata.products);
+                        let data = response.metadata.products;
+                        setProducts(data.filter(p => p.isActive !== false));
                         setCategoryTitle(selectedCategory.name);
                     } else {
                         setProducts([]);
@@ -132,13 +135,8 @@ function ProductsHome() {
                     const res = await requestGetProducts(8);
                     
                     if (res && res.metadata) {
-                        if (res.metadata.products) {
-                            setProducts(res.metadata.products);
-                        } else if (Array.isArray(res.metadata)) {
-                            setProducts(res.metadata);
-                        } else {
-                            setProducts([]);
-                        }
+                        let data = res.metadata.products ? res.metadata.products : res.metadata;
+                        setProducts(data.filter(p => p.isActive !== false));
                         setCategoryTitle('Sản phẩm nổi bật');
                     }
                 }
@@ -289,7 +287,11 @@ function ProductsHome() {
                             ]}
                         />
 
-                        <button onClick={() => setCheckSelectCompare(!checkSelectCompare)}>
+                        <button
+                            onClick={() => setCheckSelectCompare(!checkSelectCompare)}
+                            disabled={!selectedCategory}
+                            style={{ opacity: !selectedCategory ? 0.5 : 1, cursor: !selectedCategory ? 'not-allowed' : 'pointer' }}
+                        >
                             {checkSelectCompare ? 'Bỏ so sánh' : 'So sánh'}
                         </button>
                     </div>

@@ -20,7 +20,7 @@ const {
 class PaymentsController {
   async payment(req, res) {
     const { id } = req.user;
-    const { typePayment } = req.body;
+    const { typePayment, productsToOrder } = req.body;
     if (!typePayment) {
       throw new BadRequestError("Vui lòng nhập đầy đủ thông tin");
     }
@@ -39,16 +39,47 @@ class PaymentsController {
     
     // Get user information for notification
     const user = await modelUser.findById(id);
-    
+
+    // --- NEW LOGIC: Lấy danh sách sản phẩm được chọn từ client ---
+    let orderProducts = [];
+    if (Array.isArray(productsToOrder) && productsToOrder.length > 0) {
+      // Chỉ lấy các sản phẩm có trong giỏ hàng và được chọn
+      orderProducts = findCart.product.filter(item =>
+        productsToOrder.some(p => p._id === item.productId.toString() || p.productId === item.productId.toString())
+      ).map(item => {
+        // Lấy số lượng đúng từ productsToOrder nếu có
+        const found = productsToOrder.find(p => p._id === item.productId.toString() || p.productId === item.productId.toString());
+        return {
+          productId: item.productId,
+          quantity: found?.quantity || item.quantity
+        };
+      });
+      if (orderProducts.length === 0) {
+        throw new BadRequestError("Không có sản phẩm nào được chọn để đặt hàng");
+      }
+    } else {
+      // Nếu không truyền lên thì lấy toàn bộ giỏ hàng (giữ tương thích cũ)
+      orderProducts = findCart.product;
+    }
+
+    // Tính lại tổng tiền dựa trên orderProducts
+    let totalPrice = 0;
+    for (const item of orderProducts) {
+      const product = await modelProduct.findById(item.productId);
+      if (!product) continue;
+      const price = product.priceDiscount > 0 ? product.priceDiscount : product.price;
+      totalPrice += price * item.quantity;
+    }
+
     if (typePayment === "COD") {
       const newPayment = new modelPayments({
         userId: id,
-        products: findCart.product,
+        products: orderProducts,
         address: findCart.address,
         phone: findCart.phone,
         fullName: findCart.fullName,
         typePayments: "COD",
-        totalPrice: findCart.totalPrice,
+        totalPrice: totalPrice,
         statusOrder: "pending",
       });
       await newPayment.save();
@@ -61,12 +92,31 @@ class PaymentsController {
         isAdminOnly: true
       });
       
-      await findCart.deleteOne();
+      // Xóa các sản phẩm đã đặt khỏi giỏ hàng
+      findCart.product = findCart.product.filter(item =>
+        !orderProducts.some(p => p.productId.toString() === item.productId.toString())
+      );
+      // Nếu giỏ hàng còn sản phẩm thì cập nhật lại tổng tiền, nếu hết thì xóa giỏ hàng
+      if (findCart.product.length > 0) {
+        // Tính lại tổng tiền còn lại
+        let remainTotal = 0;
+        for (const item of findCart.product) {
+          const product = await modelProduct.findById(item.productId);
+          if (!product) continue;
+          const price = product.priceDiscount > 0 ? product.priceDiscount : product.price;
+          remainTotal += price * item.quantity;
+        }
+        findCart.totalPrice = remainTotal;
+        await findCart.save();
+      } else {
+        await findCart.deleteOne();
+      }
 
       new OK({
         message: "Thanh toán thành công",
         metadata: newPayment._id,
       }).send(res);
+      return;
     }
     if (typePayment === "MOMO") {
       var partnerCode = "MOMO";
@@ -77,7 +127,7 @@ class PaymentsController {
       var orderInfo = `thanh toan ${findCart._id}`; // nội dung giao dịch thanh toán
       var redirectUrl = "http://localhost:3000/api/check-payment-momo"; // 8080
       var ipnUrl = "http://localhost:3000/api/check-payment-momo";
-      var amount = findCart.totalPrice / 100;
+      var amount = Math.round(totalPrice);
       var requestType = "captureWallet";
       var extraData = ""; //pass empty value if your merchant does not have stores
 
@@ -220,6 +270,7 @@ class PaymentsController {
                 name: "Sản phẩm không tồn tại",
                 image: "",
                 price: 0,
+                priceDiscount: 0,
                 quantity: item.quantity,
               };
             }
@@ -229,6 +280,7 @@ class PaymentsController {
               name: product.name,
               image: product.images[0],
               price: product.price,
+              priceDiscount: product.priceDiscount,
               quantity: item.quantity,
             };
           })
@@ -284,11 +336,20 @@ class PaymentsController {
 
   async updateStatusOrder(req, res, next) {
     const { statusOrder, orderId } = req.body;
+    const userId = req.user?.id;
+    const isAdmin = req.user?.isAdmin;
     const findPayment = await modelPayments.findById(orderId);
     if (!findPayment) {
       throw new BadRequestError("Không tìm thấy đơn hàng");
     }
-    
+    // Nếu không phải admin, chỉ cho phép user huỷ đơn của chính mình
+    if (!isAdmin && userId && findPayment.userId.toString() !== userId.toString()) {
+      throw new BadRequestError("Bạn không có quyền huỷ đơn hàng này");
+    }
+    // Chỉ cho phép huỷ nếu trạng thái hiện tại là 'pending'
+    if (statusOrder === 'cancelled' && findPayment.statusOrder !== 'pending') {
+      throw new BadRequestError("Chỉ có thể huỷ đơn hàng khi đang chờ xác nhận");
+    }
     findPayment.statusOrder = statusOrder;
     await findPayment.save();
     
@@ -334,6 +395,7 @@ class PaymentsController {
                 name: product?.name,
                 image: product?.images[0],
                 price: product?.price,
+                priceDiscount: product?.priceDiscount,
                 quantity: item?.quantity,
               };
             })

@@ -24,7 +24,7 @@ function Promotions() {
                     } else if (response.metadata.products) {
                         productData = response.metadata.products;
                     }
-                    setProducts(productData);
+                    setProducts(productData.filter(p => p.isActive !== false));
                 }
             } catch (error) {
                 console.error('Error fetching products:', error);

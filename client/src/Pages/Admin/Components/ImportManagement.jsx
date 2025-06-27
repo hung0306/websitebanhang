@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Table, message, Tooltip, Space, Alert } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
-import { requestGetAllImports, requestDeleteImport } from '../../../Config/request';
+import { requestGetAllImports, requestDeleteImport, requestGetImportById } from '../../../Config/request';
 import moment from 'moment';
+import * as XLSX from 'xlsx';
 
 const ImportManagement = ({ setActiveComponent, setImportId }) => {
   const [imports, setImports] = useState([]);
@@ -51,6 +52,43 @@ const ImportManagement = ({ setActiveComponent, setImportId }) => {
   const handleEdit = (record) => {
     setImportId(record._id);
     setActiveComponent('edit-import');
+  };
+
+  const handleExportImport = async (importId) => {
+    try {
+      const res = await requestGetImportById(importId);
+      const data = res.metadata;
+      if (!data) return message.error('Không tìm thấy phiếu nhập!');
+      const rows = [
+        { 'Thông tin phiếu nhập': '', '': '', 'Giá nhập': '', 'Thành tiền': '' },
+        { 'Thông tin phiếu nhập': 'Mã phiếu nhập', '': data._id, 'Giá nhập': '', 'Thành tiền': '' },
+        { 'Thông tin phiếu nhập': 'Ngày nhập', '': moment(data.importDate).format('DD/MM/YYYY'), 'Giá nhập': '', 'Thành tiền': '' },
+        { 'Thông tin phiếu nhập': 'Nhà cung cấp', '': data.supplier?.name || '', 'Giá nhập': '', 'Thành tiền': '' },
+        { 'Thông tin phiếu nhập': '', '': '', 'Giá nhập': '', 'Thành tiền': '' },
+        { 'Thông tin phiếu nhập': 'Sản phẩm', '': 'Số lượng', 'Giá nhập': 'Giá nhập', 'Thành tiền': 'Thành tiền' },
+        { 'Thông tin phiếu nhập': data.product?.name, '': data.quantity, 'Giá nhập': data.price?.toLocaleString(), 'Thành tiền': (data.price * data.quantity)?.toLocaleString() },
+        { 'Thông tin phiếu nhập': '', '': '', 'Giá nhập': '', 'Thành tiền': '' },
+        { 'Thông tin phiếu nhập': 'Tổng tiền', '': (data.price * data.quantity)?.toLocaleString() + ' đ', 'Giá nhập': '', 'Thành tiền': '' }
+      ];
+      const worksheet = XLSX.utils.json_to_sheet(rows, { skipHeader: true });
+      // Căn giữa toàn bộ cell
+      const range = XLSX.utils.decode_range(worksheet['!ref']);
+      for (let R = range.s.r; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cell_address = { c: C, r: R };
+          const cell_ref = XLSX.utils.encode_cell(cell_address);
+          if (!worksheet[cell_ref]) continue;
+          if (!worksheet[cell_ref].s) worksheet[cell_ref].s = {};
+          worksheet[cell_ref].s.alignment = { horizontal: 'center', vertical: 'center' };
+        }
+      }
+      worksheet['!cols'] = [ { wch: 25 }, { wch: 25 }, { wch: 20 }, { wch: 20 } ];
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Import');
+      XLSX.writeFile(workbook, `phieu_nhap_${data._id}.xlsx`);
+    } catch (error) {
+      message.error('Xuất phiếu nhập thất bại!');
+    }
   };
 
   const columns = [
@@ -117,6 +155,13 @@ const ImportManagement = ({ setActiveComponent, setImportId }) => {
               icon={<DeleteOutlined />}
               onClick={() => handleDelete(record._id)}
             />
+          </Tooltip>
+          <Tooltip title="Xuất phiếu nhập">
+            <Button
+              onClick={() => handleExportImport(record._id)}
+            >
+              Xuất phiếu
+            </Button>
           </Tooltip>
         </Space>
       ),

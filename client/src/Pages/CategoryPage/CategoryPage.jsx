@@ -38,8 +38,9 @@ function CategoryPage() {
                         category: response.metadata.category,
                         subcategories: response.metadata.subcategories
                     });
-                    setProducts(response.metadata.products);
-                    setOriginalProducts(response.metadata.products);
+                    const filtered = response.metadata.products.filter(p => p.isActive !== false);
+                    setProducts(filtered);
+                    setOriginalProducts(filtered);
                 }
             } catch (error) {
                 console.error('Error fetching category products:', error);

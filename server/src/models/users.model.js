@@ -8,6 +8,7 @@ const modelUser = new Schema(
         email: { type: String, require: true },
         password: { type: String, require: true },
         phone: { type: String, require: true },
+        address: { type: String },
         isAdmin: { type: Boolean, default: false },
         isActive: { type: Boolean, default: false },
         typeLogin: { type: String, enum: ['email', 'google'] },

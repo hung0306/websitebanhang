@@ -238,113 +238,132 @@ class controllerUsers {
 
   async getAdminStats(req, res) {
     try {
+      const { type = 'week', year, month } = req.query;
       // 1. Thống kê tổng số người dùng
       const totalUsers = await modelUser.countDocuments();
 
       // 2. Thống kê đơn hàng và doanh thu
-      const orderStats = await modelPayments.aggregate([
-        {
-          $facet: {
-            // Đơn hàng theo trạng thái
-            ordersByStatus: [
-              {
-                $group: {
-                  _id: "$statusOrder",
-                  count: { $sum: 1 },
-                },
-              },
-            ],
-            // Doanh thu hôm nay
-            todayRevenue: [
-              {
-                $match: {
-                  createdAt: {
-                    $gte: new Date(new Date().setHours(0, 0, 0, 0)),
-                  },
-                  statusOrder: { $ne: "cancelled" },
-                },
-              },
-              {
-                $group: {
-                  _id: null,
-                  total: { $sum: "$totalPrice" },
-                },
-              },
-            ],
-            // Doanh thu 7 ngày gần nhất
-            weeklyRevenue: [
-              {
-                $match: {
-                  createdAt: {
-                    $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-                  },
-                  statusOrder: { $ne: "cancelled" },
-                },
-              },
-              {
-                $group: {
-                  _id: {
-                    $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
-                  },
-                  dailyRevenue: { $sum: "$totalPrice" },
-                  orderCount: { $sum: 1 },
-                },
-              },
-              { $sort: { _id: 1 } },
-            ],
-            // Đơn hàng gần đây
-            recentOrders: [
-              { $sort: { createdAt: -1 } },
-              { $limit: 10 },
-              {
-                $lookup: {
-                  from: "users",
-                  localField: "userId",
-                  foreignField: "_id",
-                  as: "user",
-                },
-              },
-            ],
-          },
-        },
+      let match = { statusOrder: { $ne: "cancelled" } };
+      let group = {};
+      let labels = [];
+      let today = new Date();
+      if (type === 'year') {
+        const y = parseInt(year) || today.getFullYear();
+        match.createdAt = {
+          $gte: new Date(`${y}-01-01T00:00:00.000Z`),
+          $lte: new Date(`${y}-12-31T23:59:59.999Z`)
+        };
+        group = {
+          _id: { $month: "$createdAt" },
+          total: { $sum: "$totalPrice" },
+          orderCount: { $sum: 1 }
+        };
+        labels = Array.from({ length: 12 }, (_, i) => `Tháng ${i + 1}`);
+      } else if (type === 'month') {
+        const y = parseInt(year) || today.getFullYear();
+        const m = parseInt(month) || today.getMonth() + 1;
+        const daysInMonth = new Date(y, m, 0).getDate();
+        match.createdAt = {
+          $gte: new Date(`${y}-${String(m).padStart(2, '0')}-01T00:00:00.000Z`),
+          $lte: new Date(`${y}-${String(m).padStart(2, '0')}-${daysInMonth}T23:59:59.999Z`)
+        };
+        group = {
+          _id: { $dayOfMonth: "$createdAt" },
+          total: { $sum: "$totalPrice" },
+          orderCount: { $sum: 1 }
+        };
+        labels = Array.from({ length: daysInMonth }, (_, i) => `Ngày ${i + 1}`);
+      } else { // week (default)
+        match.createdAt = {
+          $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+        };
+        group = {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          total: { $sum: "$totalPrice" },
+          orderCount: { $sum: 1 }
+        };
+        labels = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date();
+          d.setDate(d.getDate() - (6 - i));
+          return d.toISOString().split("T")[0];
+        });
+      }
+
+      // Lấy tất cả đơn hàng trong khoảng lọc
+      const orders = await modelPayments.find(match);
+      // Chuẩn bị group key cho từng loại lọc
+      let getGroupKey;
+      if (type === 'year') {
+        getGroupKey = (order) => new Date(order.createdAt).getMonth() + 1;
+      } else if (type === 'month') {
+        getGroupKey = (order) => new Date(order.createdAt).getDate();
+      } else {
+        getGroupKey = (order) => new Date(order.createdAt).toISOString().split('T')[0];
+      }
+      // Tính tổng doanh thu theo group key
+      const revenueMap = {};
+      for (const order of orders) {
+        const groupKey = getGroupKey(order);
+        for (const item of order.products) {
+          const product = await require("../models/products.model").findById(item.productId);
+          if (product) {
+            const price = product.priceDiscount > 0 ? product.priceDiscount : product.price;
+            if (!revenueMap[groupKey]) revenueMap[groupKey] = { total: 0, orderCount: 0 };
+            revenueMap[groupKey].total += price * item.quantity;
+          }
+        }
+        if (!revenueMap[groupKey]) revenueMap[groupKey] = { total: 0, orderCount: 0 };
+        revenueMap[groupKey].orderCount += 1;
+      }
+      // Map dữ liệu doanh thu với labels
+      let formattedRevenue = [];
+      if (type === 'year') {
+        formattedRevenue = labels.map((label, idx) => {
+          const found = revenueMap[idx + 1];
+          return {
+            label,
+            total: found ? found.total : 0,
+            orderCount: found ? found.orderCount : 0
+          };
+        });
+      } else if (type === 'month') {
+        formattedRevenue = labels.map((label, idx) => {
+          const found = revenueMap[idx + 1];
+          return {
+            label,
+            total: found ? found.total : 0,
+            orderCount: found ? found.orderCount : 0
+          };
+        });
+      } else {
+        formattedRevenue = labels.map((label) => {
+          const found = revenueMap[label];
+          return {
+            label,
+            total: found ? found.total : 0,
+            orderCount: found ? found.orderCount : 0
+          };
+        });
+      }
+
+      // Đơn hàng gần đây
+      const recentOrders = await modelPayments.find({ statusOrder: { $ne: "cancelled" } })
+        .sort({ createdAt: -1 })
+        .limit(10);
+
+      // Đơn hàng theo trạng thái
+      const ordersByStatus = await modelPayments.aggregate([
+        { $group: { _id: "$statusOrder", count: { $sum: 1 } } }
       ]);
 
-      // Xử lý kết quả thống kê
-      const stats = orderStats[0];
-
       // Chuyển đổi ordersByStatus thành object dễ sử dụng
-      const orderStatusCounts = stats.ordersByStatus.reduce((acc, curr) => {
+      const orderStatusCounts = ordersByStatus.reduce((acc, curr) => {
         acc[curr._id] = curr.count;
         return acc;
       }, {});
 
-      // Tạo mảng 7 ngày gần nhất
-      const last7Days = Array.from({ length: 7 }, (_, i) => {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        return date.toISOString().split("T")[0];
-      }).reverse();
-
-      // Map dữ liệu doanh thu với 7 ngày
-      const formattedWeeklyRevenue = last7Days.map((date) => {
-        const dayData = stats.weeklyRevenue.find(
-          (item) => item._id === date
-        ) || {
-          dailyRevenue: 0,
-          orderCount: 0,
-        };
-        return {
-          _id: date,
-          dailyRevenue: dayData.dailyRevenue,
-          orderCount: dayData.orderCount,
-          dayLabel: new Date(date).toLocaleDateString("vi-VN", {
-            weekday: "short",
-          }),
-        };
-      });
-
       // Format đơn hàng gần đây
-      const formattedRecentOrders = stats.recentOrders.map((order) => ({
+      const formattedRecentOrders = recentOrders.map((order) => ({
         key: order._id.toString(),
         order: order._id.toString().slice(-6).toUpperCase(),
         customer: order.fullName,
@@ -360,6 +379,26 @@ class controllerUsers {
             : "Đã hủy",
       }));
 
+      // Tính lại todayRevenue cho đúng giá (ưu tiên giá khuyến mãi)
+      const startToday = new Date();
+      startToday.setHours(0, 0, 0, 0);
+      const endToday = new Date();
+      endToday.setHours(23, 59, 59, 999);
+      const todayOrders = await modelPayments.find({
+        statusOrder: { $ne: "cancelled" },
+        createdAt: { $gte: startToday, $lte: endToday }
+      });
+      let todayRevenue = 0;
+      for (const order of todayOrders) {
+        for (const item of order.products) {
+          const product = await require("../models/products.model").findById(item.productId);
+          if (product) {
+            const price = product.priceDiscount > 0 ? product.priceDiscount : product.price;
+            todayRevenue += price * item.quantity;
+          }
+        }
+      }
+
       new OK({
         message: "Lấy thống kê thành công",
         metadata: {
@@ -367,8 +406,8 @@ class controllerUsers {
           newOrders: orderStatusCounts.pending || 0,
           processingOrders: orderStatusCounts.shipping || 0,
           completedOrders: orderStatusCounts.delivered || 0,
-          todayRevenue: stats.todayRevenue[0]?.total || 0,
-          weeklyRevenue: formattedWeeklyRevenue,
+          todayRevenue: todayRevenue,
+          revenue: formattedRevenue,
           recentOrders: formattedRecentOrders,
           orderStatusCounts,
         },
@@ -481,8 +520,8 @@ class controllerUsers {
 
   async updateInfoUser(req, res) {
     const { id } = req.user;
-    const { fullName, phone, email } = req.body;
-    await modelUser.updateOne({ _id: id }, { fullName, phone, email });
+    const { fullName, phone, email, address } = req.body;
+    await modelUser.updateOne({ _id: id }, { fullName, phone, email, address });
     new OK({ message: "Cập nhật thông tin người dùng thành công" }).send(res);
   }
 

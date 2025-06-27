@@ -59,7 +59,20 @@ const ModalDetailOrder = ({ isModalVisible, setIsModalVisible, selectedOrder }) 
                                     <h4 className={cx('productName')}>{item?.product?.name}</h4>
                                     <div className={cx('productMeta')}>
                                         <span className={cx('quantity')}>Số lượng: x{item?.quantity}</span>
-                                        <span className={cx('price')}>{item?.product?.price.toLocaleString()} đ</span>
+                                        <span className={cx('price')}>
+                                            {item?.product?.priceDiscount && item?.product?.priceDiscount > 0 ? (
+                                                <>
+                                                    <span style={{ color: '#e94560', fontWeight: 600 }}>
+                                                        {(item?.product?.priceDiscount * item?.quantity).toLocaleString()} đ
+                                                    </span>
+                                                    <span style={{ textDecoration: 'line-through', color: '#888', marginLeft: 8 }}>
+                                                        {(item?.product?.price * item?.quantity).toLocaleString()} đ
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                <span>{(item?.product?.price * item?.quantity).toLocaleString()} đ</span>
+                                            )}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -69,7 +82,16 @@ const ModalDetailOrder = ({ isModalVisible, setIsModalVisible, selectedOrder }) 
 
                 <div className={cx('orderTotal')}>
                     <div className={cx('totalAmount')}>
-                        Tổng tiền: <span>{order?.findPayment?.totalPrice?.toLocaleString()} đ</span>
+                        Tổng tiền: <span>{
+                            order?.dataProduct
+                                ? order.dataProduct.reduce((sum, item) => {
+                                    const price = (item?.product?.priceDiscount && item?.product?.priceDiscount > 0)
+                                        ? item?.product?.priceDiscount
+                                        : item?.product?.price;
+                                    return sum + price * item?.quantity;
+                                }, 0).toLocaleString()
+                                : 0
+                        } đ</span>
                     </div>
                 </div>
             </div>

@@ -52,8 +52,8 @@ export const requestUploadImage = async (data) => {
     return res.data;
 };
 
-export const requestGetAdminStats = async () => {
-    const res = await request.get('/api/get-admin-stats');
+export const requestGetAdminStats = async (params = {}) => {
+    const res = await request.get('/api/get-admin-stats', { params });
     return res.data;
 };
 
@@ -181,8 +181,8 @@ export const requestUpdateInfoUserCart = async (data) => {
     return res.data;
 };
 
-export const requestPayment = async (typePayment) => {
-    const res = await request.post('/api/payment', { typePayment });
+export const requestPayment = async (typePayment, productsToOrder) => {
+    const res = await request.post('/api/payment', { typePayment, productsToOrder });
     return res.data;
 };
 

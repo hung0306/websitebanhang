@@ -21,9 +21,10 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 
 import { useEffect, useRef, useState, useContext } from 'react';
-import { requestAddToCart, requestGetProductById } from '../../Config/request';
+import { requestAddToCart, requestGetProductById, requestGetCart } from '../../Config/request';
 import { useParams, useNavigate } from 'react-router-dom';
 import Context from '../../store/Context';
+import { useStore } from '../../hooks/useStore';
 
 import { message, Tabs, Rate, Divider, Button, Tooltip } from 'antd';
 
@@ -43,7 +44,7 @@ function DetailProduct() {
     const [activeTab, setActiveTab] = useState('description');
     const [stockExceeded, setStockExceeded] = useState(false);
 
-    const { dataUser } = useContext(Context);
+    const { dataUser, setCartCount } = useStore();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -67,6 +68,17 @@ function DetailProduct() {
     }, [id]);
 
     const handleAddToCart = async () => {
+        // Check if user is authenticated by looking for _id in dataUser
+        const isAuthenticated = dataUser && dataUser._id;
+        if (!isAuthenticated) {
+            message.info('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng');
+            navigate('/login');
+            return;
+        }
+        if (!dataProduct?.stock || dataProduct.stock <= 0) {
+            message.error('Sản phẩm đã hết hàng');
+            return;
+        }
         try {
             // Ensure quantity is a valid number
             const validQuantity = typeof quantity === 'string' ? 
@@ -82,6 +94,11 @@ function DetailProduct() {
                 quantity: validQuantity,
             };
             await requestAddToCart(data);
+            // Cập nhật số lượng giỏ hàng ngay
+            const res = await requestGetCart();
+            if (res && res.metadata && res.metadata.newData && Array.isArray(res.metadata.newData.data)) {
+                setCartCount(res.metadata.newData.data.length);
+            }
             message.success('Thêm vào giỏ hàng thành công');
         } catch (error) {
             message.error('Thêm vào giỏ hàng thất bại');
@@ -98,7 +115,10 @@ function DetailProduct() {
             navigate('/login');
             return;
         }
-        
+        if (!dataProduct?.stock || dataProduct.stock <= 0) {
+            message.error('Sản phẩm đã hết hàng');
+            return;
+        }
         try {
             // Ensure quantity is a valid number
             const validQuantity = typeof quantity === 'string' ? 
@@ -128,6 +148,12 @@ function DetailProduct() {
     };
 
     const handleQuantityChange = (value) => {
+        // Nếu hết hàng thì không cho tăng số lượng và báo lỗi
+        if (!dataProduct?.stock || dataProduct.stock <= 0) {
+            message.error('Sản phẩm đã hết hàng');
+            setQuantity(0);
+            return;
+        }
         // Skip validation for empty string (allows user to clear the field)
         if (value === '') {
             return;

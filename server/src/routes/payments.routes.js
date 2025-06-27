@@ -31,7 +31,7 @@ router.get(
 
 router.post(
   "/api/update-status-order",
-  authAdmin,
+  authUser,
   asyncHandler(controllerPayments.updateStatusOrder)
 );
 

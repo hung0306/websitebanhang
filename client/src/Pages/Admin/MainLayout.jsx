@@ -29,6 +29,9 @@ import EditSupplier from './Pages/EditSupplier';
 import ImportManagement from './Components/ImportManagement';
 import AddImport from './Pages/AddImport';
 import EditImport from './Pages/EditImport';
+import PostManagement from './Components/PostManagement';
+import CouponManagement from './Components/CouponManagement';
+import ReviewManagement from './Components/ReviewManagement';
 import { 
     requestAdmin, 
     requestLogout, 
@@ -63,7 +66,7 @@ const MainLayout = () => {
     const [paginatedLoading, setPaginatedLoading] = useState(false);
     
     // Get user data from Context
-    const { dataUser, fetchAuth } = useContext(Context);
+    const { dataUser, fetchAuth, resetUser } = useContext(Context);
 
     const menuItems = [
         {
@@ -101,6 +104,21 @@ const MainLayout = () => {
             icon: <ShopOutlined />,
             label: 'Quản lý nhà cung cấp',
         },
+        {
+            key: 'posts',
+            icon: <AppstoreOutlined />,
+            label: 'Quản lý bài viết',
+        },
+        {
+            key: 'coupons',
+            icon: <AppstoreOutlined />,
+            label: 'Quản lý mã giảm giá',
+        },
+        {
+            key: 'reviews',
+            icon: <AppstoreOutlined />,
+            label: 'Quản lý đánh giá',
+        },
     ];
 
     const renderComponent = () => {
@@ -135,6 +153,12 @@ const MainLayout = () => {
                 return <AddImport setActiveComponent={setActiveComponent} />;
             case 'edit-import':
                 return <EditImport setActiveComponent={setActiveComponent} importId={importId} />;
+            case 'posts':
+                return <PostManagement />;
+            case 'coupons':
+                return <CouponManagement />;
+            case 'reviews':
+                return <ReviewManagement />;
             default:
                 return <Dashboard />;
         }
@@ -232,7 +256,8 @@ const MainLayout = () => {
     const handleLogout = async () => {
         try {
             await requestLogout();
-            navigate('/login');
+            resetUser();
+            navigate('/');
         } catch (error) {
             console.error('Logout error:', error);
         }
