@@ -2,6 +2,7 @@ const modelUser = require("../models/users.model");
 const modelPayments = require("../models/payments.model");
 const modelApiKey = require("../models/apiKey.model");
 const modelOtp = require("../models/otp.model");
+const modelProduct = require("../models/products.model");
 
 const { BadRequestError } = require("../core/error.response");
 const {
@@ -305,7 +306,7 @@ class controllerUsers {
       for (const order of orders) {
         const groupKey = getGroupKey(order);
         for (const item of order.products) {
-          const product = await require("../models/products.model").findById(item.productId);
+          const product = await modelProduct.findById(item.productId);
           if (product) {
             const price = product.priceDiscount > 0 ? product.priceDiscount : product.price;
             if (!revenueMap[groupKey]) revenueMap[groupKey] = { total: 0, orderCount: 0 };
@@ -391,7 +392,7 @@ class controllerUsers {
       let todayRevenue = 0;
       for (const order of todayOrders) {
         for (const item of order.products) {
-          const product = await require("../models/products.model").findById(item.productId);
+          const product = await modelProduct.findById(item.productId);
           if (product) {
             const price = product.priceDiscount > 0 ? product.priceDiscount : product.price;
             todayRevenue += price * item.quantity;
@@ -545,68 +546,106 @@ class controllerUsers {
     }).send(res);
   }
 
-  async loginGoogle(req, res) {
-    const { credential } = req.body;
-    const dataToken = jwtDecode(credential);
-    const user = await modelUser.findOne({ email: dataToken.email });
-    if (user) {
-      await createApiKey(user._id);
-      const token = await createToken({ id: user._id });
-      const refreshToken = await createRefreshToken({ id: user._id });
-      res.cookie("token", token, {
-        httpOnly: true, // Chặn truy cập từ JavaScript (bảo mật hơn)
-        secure: true, // Chỉ gửi trên HTTPS (để đảm bảo an toàn)
-        sameSite: "Strict", // Chống tấn công CSRF
-        maxAge: 15 * 60 * 1000, // 15 phút
-      });
-      res.cookie("logged", 1, {
-        httpOnly: false, // Chặn truy cập từ JavaScript (bảo mật hơn)
-        secure: true, // Chỉ gửi trên HTTPS (để đảm bảo an toàn)
-        sameSite: "Strict", // Chống tấn công CSRF
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
-      });
-      res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "Strict",
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
-      });
+  async getProductStats(req, res) {
+    try {
+      // 1. Thống kê sản phẩm bán chạy (top 5 sản phẩm có số lượng bán nhiều nhất)
+      const bestSellingProducts = await modelPayments.aggregate([
+        { $match: { statusOrder: { $ne: "cancelled" } } },
+        { $unwind: "$products" },
+        {
+          $group: {
+            _id: "$products.productId",
+            totalQuantity: { $sum: "$products.quantity" }
+          }
+        },
+        { $sort: { totalQuantity: -1 } },
+        { $limit: 5 }
+      ]);
+
+      // Lấy thông tin chi tiết sản phẩm bán chạy
+      const bestSellingWithDetails = await Promise.all(
+        bestSellingProducts.map(async (item) => {
+          const product = await modelProduct.findById(item._id);
+          if (!product) return null;
+          
+          // Tính doanh thu thực tế dựa trên giá khuyến mãi hoặc giá gốc
+          const price = product.priceDiscount > 0 ? product.priceDiscount : product.price;
+          const totalRevenue = price * item.totalQuantity;
+          
+          return {
+            productId: item._id,
+            name: product.name,
+            totalQuantity: item.totalQuantity,
+            totalRevenue: totalRevenue,
+            image: product.images[0]
+          };
+        })
+      );
+
+      // Lọc bỏ các sản phẩm null
+      const filteredBestSelling = bestSellingWithDetails.filter(item => item !== null);
+
+      // 2. Thống kê sản phẩm tồn kho nhiều nhất (top 5 sản phẩm có stock cao nhất)
+      const highStockProducts = await modelProduct
+        .find({ isActive: true })
+        .sort({ stock: -1 })
+        .limit(5)
+        .select('name stock images price priceDiscount');
+
+      const highStockWithDetails = highStockProducts.map(product => ({
+        productId: product._id,
+        name: product.name,
+        stock: product.stock,
+        image: product.images[0],
+        price: product.price,
+        priceDiscount: product.priceDiscount
+      }));
+
+      // 3. Thống kê sản phẩm sắp hết hàng (stock < 10)
+      const lowStockProducts = await modelProduct
+        .find({ isActive: true, stock: { $lt: 10, $gt: 0 } })
+        .sort({ stock: 1 })
+        .limit(5)
+        .select('name stock images price priceDiscount');
+
+      const lowStockWithDetails = lowStockProducts.map(product => ({
+        productId: product._id,
+        name: product.name,
+        stock: product.stock,
+        image: product.images[0],
+        price: product.price,
+        priceDiscount: product.priceDiscount
+      }));
+
+      // 4. Thống kê sản phẩm hết hàng
+      const outOfStockProducts = await modelProduct
+        .find({ isActive: true, stock: 0 })
+        .select('name stock images price priceDiscount');
+
+      const outOfStockWithDetails = outOfStockProducts.map(product => ({
+        productId: product._id,
+        name: product.name,
+        stock: product.stock,
+        image: product.images[0],
+        price: product.price,
+        priceDiscount: product.priceDiscount
+      }));
+
       new OK({
-        message: "Đăng nhập thành công",
-        metadata: { token, refreshToken },
+        message: "Lấy thống kê sản phẩm thành công",
+        metadata: {
+          bestSellingProducts: filteredBestSelling,
+          highStockProducts: highStockWithDetails,
+          lowStockProducts: lowStockWithDetails,
+          outOfStockProducts: outOfStockWithDetails,
+          totalProducts: await modelProduct.countDocuments({ isActive: true }),
+          totalOutOfStock: outOfStockProducts.length,
+          totalLowStock: lowStockProducts.length
+        },
       }).send(res);
-    } else {
-      const newUser = await modelUser.create({
-        fullName: dataToken.name,
-        email: dataToken.email,
-        typeLogin: "google",
-      });
-      await newUser.save();
-      await createApiKey(newUser._id);
-      const token = await createToken({ id: newUser._id });
-      const refreshToken = await createRefreshToken({ id: newUser._id });
-      res.cookie("token", token, {
-        httpOnly: true, // Chặn truy cập từ JavaScript (bảo mật hơn)
-        secure: true, // Chỉ gửi trên HTTPS (để đảm bảo an toàn)
-        sameSite: "Strict", // ChONGL tấn công CSRF
-        maxAge: 15 * 60 * 1000, // 15 phút
-      });
-      res.cookie("logged", 1, {
-        httpOnly: false, // Chặn truy cập từ JavaScript (bảo mật hơn)
-        secure: true, // Chỉ gửi trên HTTPS (để đảm bảo an toàn)
-        sameSite: "Strict", // ChONGL tấn công CSRF
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
-      });
-      res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "Strict",
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
-      });
-      new OK({
-        message: "Đăng nhập thành công",
-        metadata: { token, refreshToken },
-      }).send(res);
+    } catch (error) {
+      console.error("Error in getProductStats:", error);
+      throw new BadRequestError("Lỗi khi lấy thống kê sản phẩm");
     }
   }
 

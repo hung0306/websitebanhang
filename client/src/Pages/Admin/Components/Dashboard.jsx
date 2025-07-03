@@ -14,7 +14,7 @@ import {
     PointElement,
 } from 'chart.js';
 import axios from 'axios';
-import { requestGetAdminStats } from '../../../Config/request';
+import { requestGetAdminStats, requestGetProductStats } from '../../../Config/request';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 
@@ -31,27 +31,49 @@ const Dashboard = () => {
         revenue: [],
         recentOrders: [],
     });
+    const [productStats, setProductStats] = useState({
+        bestSellingProducts: [],
+        highStockProducts: [],
+        lowStockProducts: [],
+        outOfStockProducts: [],
+        totalProducts: 0,
+        totalOutOfStock: 0,
+        totalLowStock: 0
+    });
     const [filterType, setFilterType] = useState('week');
     const [filterYear, setFilterYear] = useState(dayjs().year());
     const [filterMonth, setFilterMonth] = useState(dayjs().month() + 1);
     const navigate = useNavigate();
 
     const fetchStats = async (type = filterType, year = filterYear, month = filterMonth) => {
-        try {
+            try {
             let params = { type };
             if (type === 'year') params.year = year;
             if (type === 'month') { params.year = year; params.month = month; }
             const response = await requestGetAdminStats(params);
-            setStats(response.metadata);
+                setStats(response.metadata);
+            } catch (error) {
+                console.error('Error fetching stats:', error);
+            }
+        };
+
+    const fetchProductStats = async () => {
+        try {
+            const response = await requestGetProductStats();
+            setProductStats(response.metadata);
         } catch (error) {
-            console.error('Error fetching stats:', error);
+            console.error('Error fetching product stats:', error);
         }
     };
 
     useEffect(() => {
         fetchStats();
+        fetchProductStats();
         // Cập nhật dữ liệu mỗi 5 phút
-        const interval = setInterval(() => fetchStats(), 5 * 60 * 1000);
+        const interval = setInterval(() => {
+            fetchStats();
+            fetchProductStats();
+        }, 5 * 60 * 1000);
         return () => clearInterval(interval);
     }, [filterType, filterYear, filterMonth]);
 
@@ -85,6 +107,66 @@ const Dashboard = () => {
                 pointRadius: 5,
                 tension: 0.3,
                 fill: false,
+            },
+        ],
+    };
+
+    // Data cho biểu đồ cột sản phẩm bán chạy
+    const bestSellingBarData = {
+        labels: productStats.bestSellingProducts.map((product) => product.name.length > 15 ? product.name.substring(0, 15) + '...' : product.name),
+        datasets: [
+            {
+                label: 'Số lượng đã bán',
+                data: productStats.bestSellingProducts.map((product) => product.totalQuantity),
+                backgroundColor: [
+                    'rgba(102, 126, 234, 0.8)',
+                    'rgba(240, 147, 251, 0.8)',
+                    'rgba(79, 172, 254, 0.8)',
+                    'rgba(67, 233, 123, 0.8)',
+                    'rgba(250, 112, 154, 0.8)',
+                ],
+                borderColor: [
+                    'rgba(102, 126, 234, 1)',
+                    'rgba(240, 147, 251, 1)',
+                    'rgba(79, 172, 254, 1)',
+                    'rgba(67, 233, 123, 1)',
+                    'rgba(250, 112, 154, 1)',
+                ],
+                borderWidth: 2,
+                borderRadius: 8,
+                borderSkipped: false,
+                barPercentage: 0.7,
+                categoryPercentage: 0.8,
+            },
+        ],
+    };
+
+    // Data cho biểu đồ cột sản phẩm tồn kho
+    const highStockBarData = {
+        labels: productStats.highStockProducts.map((product) => product.name.length > 15 ? product.name.substring(0, 15) + '...' : product.name),
+        datasets: [
+            {
+                label: 'Số lượng tồn kho',
+                data: productStats.highStockProducts.map((product) => product.stock),
+                backgroundColor: [
+                    'rgba(168, 237, 234, 0.8)',
+                    'rgba(255, 236, 210, 0.8)',
+                    'rgba(255, 154, 158, 0.8)',
+                    'rgba(161, 140, 209, 0.8)',
+                    'rgba(250, 208, 196, 0.8)',
+                ],
+                borderColor: [
+                    'rgba(168, 237, 234, 1)',
+                    'rgba(255, 236, 210, 1)',
+                    'rgba(255, 154, 158, 1)',
+                    'rgba(161, 140, 209, 1)',
+                    'rgba(250, 208, 196, 1)',
+                ],
+                borderWidth: 2,
+                borderRadius: 8,
+                borderSkipped: false,
+                barPercentage: 0.7,
+                categoryPercentage: 0.8,
             },
         ],
     };
@@ -147,6 +229,164 @@ const Dashboard = () => {
                 title: { display: true, text: 'Số đơn hàng' },
                 ticks: {
                     stepSize: 1
+                }
+            }
+        }
+    };
+
+    // Options cho biểu đồ cột sản phẩm bán chạy
+    const bestSellingBarOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            },
+            title: {
+                display: true,
+                text: 'Top 5 Sản phẩm bán chạy nhất',
+                font: {
+                    size: 16,
+                    weight: 'bold'
+                },
+                color: '#333'
+            },
+            tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                titleColor: '#fff',
+                bodyColor: '#fff',
+                borderColor: '#667eea',
+                borderWidth: 1,
+                cornerRadius: 8,
+                callbacks: {
+                    title: function(context) {
+                        const product = productStats.bestSellingProducts[context[0].dataIndex];
+                        return product?.name || 'Sản phẩm';
+                    },
+                    label: function(context) {
+                        const product = productStats.bestSellingProducts[context.dataIndex];
+                        return [
+                            `Số lượng bán: ${context.parsed.y} sản phẩm`,
+                            `Doanh thu: ${product?.totalRevenue?.toLocaleString()} VNĐ`
+                        ];
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                grid: {
+                    display: false
+                },
+                ticks: {
+                    color: '#666',
+                    font: {
+                        size: 12
+                    }
+                }
+            },
+            y: {
+                beginAtZero: true,
+                grid: {
+                    color: 'rgba(0, 0, 0, 0.1)',
+                    drawBorder: false
+                },
+                ticks: {
+                    color: '#666',
+                    font: {
+                        size: 12
+                    },
+                    callback: function(value) {
+                        return value.toLocaleString();
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Số lượng đã bán',
+                    color: '#666',
+                    font: {
+                        size: 14,
+                        weight: 'bold'
+                    }
+                }
+            }
+        }
+    };
+
+    // Options cho biểu đồ cột sản phẩm tồn kho
+    const highStockBarOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { 
+                display: false
+            },
+            title: {
+                display: true,
+                text: 'Top 5 Sản phẩm tồn kho nhiều nhất',
+                font: {
+                    size: 16,
+                    weight: 'bold'
+                },
+                color: '#333'
+            },
+            tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                titleColor: '#fff',
+                bodyColor: '#fff',
+                borderColor: '#a8edea',
+                borderWidth: 1,
+                cornerRadius: 8,
+                callbacks: {
+                    title: function(context) {
+                        const product = productStats.highStockProducts[context[0].dataIndex];
+                        return product?.name || 'Sản phẩm';
+                    },
+                    label: function(context) {
+                        const product = productStats.highStockProducts[context.dataIndex];
+                        return [
+                            `Tồn kho: ${context.parsed.y} sản phẩm`,
+                            `Giá: ${product?.priceDiscount > 0 ? product.priceDiscount : product.price} VNĐ`
+                        ];
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                grid: {
+                    display: false
+                },
+                ticks: {
+                    color: '#666',
+                    font: {
+                        size: 12
+                    }
+                }
+            },
+            y: {
+                beginAtZero: true,
+                grid: {
+                    color: 'rgba(0, 0, 0, 0.1)',
+                    drawBorder: false
+                },
+                ticks: {
+                    color: '#666',
+                    font: {
+                        size: 12
+                    },
+                    callback: function(value) {
+                        return value.toLocaleString();
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Số lượng tồn kho',
+                    color: '#666',
+                    font: {
+                        size: 14,
+                        weight: 'bold'
+                    }
                 }
             }
         }
@@ -249,6 +489,100 @@ const Dashboard = () => {
                 <Col xs={24} md={12}>
                     <Card title="Thống kê số đơn hàng">
                         <Line data={orderLineData} options={orderLineOptions} />
+                    </Card>
+                </Col>
+
+                {/* Thống kê sản phẩm */}
+                <Col xs={24} sm={12} lg={6}>
+                    <Card>
+                        <Statistic
+                            title="Tổng sản phẩm"
+                            value={productStats.totalProducts}
+                            prefix={<ShoppingCartOutlined />}
+                            valueStyle={{ color: '#1890ff' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <Card>
+                        <Statistic
+                            title="Sản phẩm hết hàng"
+                            value={productStats.totalOutOfStock}
+                            prefix={<ShoppingCartOutlined />}
+                            valueStyle={{ color: '#ff4d4f' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <Card>
+                        <Statistic
+                            title="Sản phẩm sắp hết"
+                            value={productStats.totalLowStock}
+                            prefix={<ShoppingCartOutlined />}
+                            valueStyle={{ color: '#faad14' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <Card>
+                        <Statistic
+                            title="Sản phẩm đang bán"
+                            value={productStats.totalProducts - productStats.totalOutOfStock}
+                            prefix={<ShoppingCartOutlined />}
+                            valueStyle={{ color: '#52c41a' }}
+                        />
+                    </Card>
+                </Col>
+
+                {/* Biểu đồ cột sản phẩm bán chạy và tồn kho */}
+                <Col xs={24} md={12}>
+                    <Card 
+                        title="Thống kê sản phẩm bán chạy"
+                        style={{ height: '100%' }}
+                        bodyStyle={{ padding: '20px' }}
+                    >
+                        {productStats.bestSellingProducts.length > 0 ? (
+                            <div style={{ height: '400px', position: 'relative' }}>
+                                <Bar data={bestSellingBarData} options={bestSellingBarOptions} />
+                            </div>
+                        ) : (
+                            <div style={{ 
+                                textAlign: 'center', 
+                                padding: '40px', 
+                                color: '#999',
+                                height: '400px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                Chưa có dữ liệu sản phẩm bán chạy
+                            </div>
+                        )}
+                    </Card>
+                </Col>
+                <Col xs={24} md={12}>
+                    <Card 
+                        title="Thống kê sản phẩm tồn kho"
+                        style={{ height: '100%' }}
+                        bodyStyle={{ padding: '20px' }}
+                    >
+                        {productStats.highStockProducts.length > 0 ? (
+                            <div style={{ height: '400px', position: 'relative' }}>
+                                <Bar data={highStockBarData} options={highStockBarOptions} />
+                            </div>
+                        ) : (
+                            <div style={{ 
+                                textAlign: 'center', 
+                                padding: '40px', 
+                                color: '#999',
+                                height: '400px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                Chưa có dữ liệu sản phẩm tồn kho
+                            </div>
+                        )}
                     </Card>
                 </Col>
             </Row>

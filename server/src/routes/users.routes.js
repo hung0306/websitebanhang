@@ -42,6 +42,11 @@ router.get(
   asyncHandler(controllerUsers.getAdminStats)
 );
 router.get(
+  "/api/get-product-stats",
+  authAdmin,
+  asyncHandler(controllerUsers.getProductStats)
+);
+router.get(
   "/api/get-all-users",
   authAdmin,
   asyncHandler(controllerUsers.getAllUser)

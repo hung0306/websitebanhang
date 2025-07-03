@@ -17,23 +17,23 @@ const cx = classNames.bind(styles);
 
 function getColumns(cancellingId, setCancellingId, setDataOrder) {
     return [
-        {
-            title: 'ID',
-            dataIndex: 'orderId',
-            key: 'orderId',
-            width: '15%',
-            ellipsis: true,
-        },
-        {
-            title: 'Tên sản phẩm',
-            dataIndex: 'products',
-            key: 'products',
-            render: (products) => products[0].name,
-        },
-        {
-            title: 'Giá',
-            dataIndex: 'products',
-            key: 'price',
+    {
+        title: 'ID',
+        dataIndex: 'orderId',
+        key: 'orderId',
+        width: '15%',
+        ellipsis: true,
+    },
+    {
+        title: 'Tên sản phẩm',
+        dataIndex: 'products',
+        key: 'products',
+        render: (products) => products[0].name,
+    },
+    {
+        title: 'Giá',
+        dataIndex: 'products',
+        key: 'price',
             render: (products) => {
                 const p = products[0];
                 if (p.priceDiscount && p.priceDiscount > 0) {
@@ -41,13 +41,13 @@ function getColumns(cancellingId, setCancellingId, setDataOrder) {
                 }
                 return p.price?.toLocaleString('vi-VN') + ' đ';
             },
-        },
-        {
-            title: 'Số lượng',
-            dataIndex: 'products',
-            key: 'quantity',
-            render: (products) => products[0]?.quantity,
-        },
+    },
+    {
+        title: 'Số lượng',
+        dataIndex: 'products',
+        key: 'quantity',
+        render: (products) => products[0]?.quantity,
+    },
         {
             title: 'Thành tiền',
             dataIndex: 'products',
@@ -59,70 +59,70 @@ function getColumns(cancellingId, setCancellingId, setDataOrder) {
                 return total?.toLocaleString('vi-VN') + ' đ';
             },
         },
-        {
-            title: 'Địa chỉ',
-            dataIndex: 'address',
-            key: 'address',
-        },
-        {
-            title: 'Trạng thái',
-            dataIndex: 'statusOrder',
-            key: 'statusOrder',
-            render: (status) => {
-                let color = '';
-                let text = '';
+    {
+        title: 'Địa chỉ',
+        dataIndex: 'address',
+        key: 'address',
+    },
+    {
+        title: 'Trạng thái',
+        dataIndex: 'statusOrder',
+        key: 'statusOrder',
+        render: (status) => {
+            let color = '';
+            let text = '';
 
-                switch (status) {
-                    case 'pending':
-                        color = '#faad14'; // màu vàng
-                        text = 'Đang xử lý';
-                        break;
-                    case 'completed':
-                        color = '#1677ff'; // màu xanh dương
-                        text = 'Đã xác nhận';
-                        break;
-                    case 'shipping':
-                        color = '#722ed1'; // màu tím
-                        text = 'Đang vận chuyển';
-                        break;
-                    case 'delivered':
-                        color = '#52c41a'; // màu xanh lá
-                        text = 'Đã giao hàng';
-                        break;
-                    case 'cancelled':
-                        color = '#ff4d4f'; // màu đỏ
-                        text = 'Đã hủy';
-                        break;
-                    default:
-                        color = '#000000';
-                        text = status;
-                }
+            switch (status) {
+                case 'pending':
+                    color = '#faad14'; // màu vàng
+                    text = 'Đang xử lý';
+                    break;
+                case 'completed':
+                    color = '#1677ff'; // màu xanh dương
+                    text = 'Đã xác nhận';
+                    break;
+                case 'shipping':
+                    color = '#722ed1'; // màu tím
+                    text = 'Đang vận chuyển';
+                    break;
+                case 'delivered':
+                    color = '#52c41a'; // màu xanh lá
+                    text = 'Đã giao hàng';
+                    break;
+                case 'cancelled':
+                    color = '#ff4d4f'; // màu đỏ
+                    text = 'Đã hủy';
+                    break;
+                default:
+                    color = '#000000';
+                    text = status;
+            }
 
-                return (
-                    <Tag
-                        color={color}
-                        style={{
-                            borderRadius: '20px',
-                            padding: '4px 12px',
-                            fontWeight: 500
-                        }}
-                    >
-                        {text}
-                    </Tag>
-                );
-            },
+            return (
+                <Tag
+                    color={color}
+                    style={{
+                        borderRadius: '20px',
+                        padding: '4px 12px',
+                        fontWeight: 500
+                    }}
+                >
+                    {text}
+                </Tag>
+            );
         },
-        {
-            title: 'Phương thức',
-            dataIndex: 'typePayments',
-            key: 'typePayments',
-        },
-        {
-            title: 'Ngày đặt',
-            dataIndex: 'createdAt',
-            key: 'createdAt',
-            render: (date) => new Date(date).toLocaleDateString('vi-VN'),
-        },
+    },
+    {
+        title: 'Phương thức',
+        dataIndex: 'typePayments',
+        key: 'typePayments',
+    },
+    {
+        title: 'Ngày đặt',
+        dataIndex: 'createdAt',
+        key: 'createdAt',
+        render: (date) => new Date(date).toLocaleDateString('vi-VN'),
+    },
         {
             title: 'Thao tác',
             key: 'action',
@@ -150,7 +150,7 @@ function getColumns(cancellingId, setCancellingId, setDataOrder) {
                 return null;
             },
         },
-    ];
+];
 }
 
 function InfoUser({ isOpen, setIsOpen }) {
@@ -196,8 +196,8 @@ function InfoUser({ isOpen, setIsOpen }) {
             };
             const res = await requestUpdateInfoUser(data);
             if (res && res.message && res.message.includes('thành công')) {
-                message.success('Cập nhật thông tin người dùng thành công');
-                window.location.reload();
+            message.success('Cập nhật thông tin người dùng thành công');
+            window.location.reload();
             } else {
                 message.error(res.message || 'Cập nhật thông tin người dùng thất bại');
             }

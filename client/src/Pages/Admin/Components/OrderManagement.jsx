@@ -7,6 +7,8 @@ import { requestGetOrderAdmin, requestUpdateStatusOrder, requestGetOnePayment } 
 import ModalDetailOrder from './ModalDetailOrder';
 import OrderStatusFilter from './OrderStatusFilter';
 import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const OrderManagement = () => {
     const [orders, setOrders] = useState([]);
@@ -133,6 +135,9 @@ const OrderManagement = () => {
                     <Button onClick={() => handleExportOrder(record.id)} type="default">
                         Xuất đơn
                     </Button>
+                    <Button onClick={() => handleExportOrderPDF(record.id)} type="dashed">
+                        Xuất PDF
+                    </Button>
                 </Space>
             ),
         },
@@ -236,6 +241,66 @@ const OrderManagement = () => {
             XLSX.writeFile(workbook, `don_hang_${orderId}.xlsx`);
         } catch (error) {
             message.error('Xuất đơn thất bại!');
+        }
+    };
+
+    // Export PDF for a single order
+    const handleExportOrderPDF = async (orderId) => {
+        try {
+            const res = await requestGetOnePayment(orderId);
+            const order = res.metadata;
+            if (!order) return message.error('Khong tim thay don hang!');
+            const info = order.findPayment;
+            const products = order.dataProduct || [];
+            const doc = new jsPDF();
+            doc.setFontSize(16);
+            doc.text('HOA DON BAN HANG', 105, 15, { align: 'center' });
+            doc.setFontSize(12);
+            doc.text(`Ma don hang: ${orderId}`, 15, 30);
+            doc.text(`Khach hang: ${info?.fullName || ''}`, 15, 38);
+            doc.text(`So dien thoai: 0${info?.phone || ''}`, 15, 46);
+            doc.text(`Dia chi: ${info?.address || ''}`, 15, 54);
+            doc.text(`Phuong thuc: ${info?.typePayments || ''}`, 15, 62);
+            doc.text(`Trang thai: ${info?.statusOrder || ''}`, 15, 70);
+            doc.text(`Ngay dat: ${new Date(info?.createdAt).toLocaleString('vi-VN')}`, 15, 78);
+
+            autoTable(doc, {
+                startY: 90,
+                head: [[
+                    'Ten san pham',
+                    'So luong',
+                    'Gia',
+                    'Thanh tien'
+                ]],
+                body: products.length > 0 ? products.map(item => [
+                    item?.product?.name,
+                    item?.quantity,
+                    (item?.product?.priceDiscount && item?.product?.priceDiscount > 0 ? item?.product?.priceDiscount : item?.product?.price)?.toLocaleString(),
+                    (((item?.product?.priceDiscount && item?.product?.priceDiscount > 0 ? item?.product?.priceDiscount : item?.product?.price) * item?.quantity) || 0).toLocaleString()
+                ]) : [['', '', '', '']],
+                styles: { fontSize: 11, halign: 'center' },
+                headStyles: { fillColor: [41, 128, 185] },
+                columnStyles: {
+                    0: { halign: 'left' },
+                    1: { halign: 'center' },
+                    2: { halign: 'right' },
+                    3: { halign: 'right' }
+                }
+            });
+
+            // Tong tien
+            const total = products.reduce((sum, item) => {
+                const price = (item?.product?.priceDiscount && item?.product?.priceDiscount > 0) ? item?.product?.priceDiscount : item?.product?.price;
+                return sum + price * item?.quantity;
+            }, 0);
+
+            doc.setFontSize(13);
+            const y = doc.lastAutoTable ? doc.lastAutoTable.finalY + 12 : 100;
+            doc.text(`Tong tien: ${total.toLocaleString()} d`, 15, y);
+            doc.save(`don_hang_${orderId}.pdf`);
+        } catch (error) {
+            console.error('Loi xuat PDF:', error);
+            message.error('Xuat PDF that bai!');
         }
     };
 

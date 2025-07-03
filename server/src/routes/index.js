@@ -16,6 +16,7 @@ function routes(app) {
   app.get("/api/refresh-token", userRoutes);
   app.post("/api/change-password", userRoutes);
   app.get("/api/get-admin-stats", userRoutes);
+  app.get("/api/get-product-stats", userRoutes);
   app.get("/api/get-all-users", userRoutes);
   app.post("/api/send-mail-forgot-password", userRoutes);
   app.post("/api/reset-password", userRoutes);

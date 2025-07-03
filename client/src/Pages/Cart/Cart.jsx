@@ -537,7 +537,7 @@ function Cart() {
                                     <div className={cx('summary-total')}>
                                         <span>Tổng tiền:</span>
                                         <span>{totalPrice.toLocaleString()}₫</span>
-                                    </div>
+                    </div>
 
                                     <div className={cx('coupon-section')}>
                                         <h4>Mã giảm giá</h4>
